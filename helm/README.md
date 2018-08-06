@@ -35,3 +35,7 @@ helm/exporter-kube-etcd helm/exporter-kube-state helm/exporter-coredns helm/expo
 helm install helm/kube-prometheus --name kube-prometheus --namespace monitoring
 
 ```
+
+```
+helm template ./helm/prometheus-operator --name prometheus-operator --namespace monitoring > ./dist/prometheus-operator.yaml
+```
