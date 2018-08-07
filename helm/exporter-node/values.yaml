@@ -2,7 +2,7 @@
 # Declare variables to be passed into your templates.
 replicaCount: 1
 image:
-  repository: quay.io/prometheus/node-exporter
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/node-exporter
   tag: v0.15.2
   pullPolicy: IfNotPresent
 service:
