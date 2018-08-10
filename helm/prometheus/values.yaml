@@ -42,7 +42,7 @@ additionalRulesLabels: {}
 ## Prometheus container image
 ##
 image:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus
+  repository: registry.cn-qingdao.aliyuncs.com/wod/prometheus
   tag: v2.2.1
 
 ## Labels to be added to the Prometheus
@@ -52,7 +52,7 @@ labels: {}
 ingress:
   ## If true, Prometheus Ingress will be created
   ##
-  enabled: false
+  enabled: true
 
   ## Annotations for Prometheus Ingress
   ##
@@ -69,7 +69,8 @@ ingress:
   ##
   # hosts:
   #   - prometheus.domain.com
-  hosts: []
+  hosts: 
+  - prometheus.ct.csii.com.cn
 
   ## TLS configuration for Prometheus Ingress
   ## Secret must be manually created in the namespace

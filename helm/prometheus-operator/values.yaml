@@ -2,26 +2,26 @@ global:
   ## Hyperkube image to use when getting ThirdPartyResources & cleaning up
   ##
   hyperkube:
-    repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/hyperkube
+    repository: registry.cn-qingdao.aliyuncs.com/wod/hyperkube
     tag: v1.7.6_coreos.0
     pullPolicy: IfNotPresent
 
 ## Prometheus-config-reloader image to use for config and rule reloading
 ##
 prometheusConfigReloader:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus-config-reloader
+  repository: registry.cn-qingdao.aliyuncs.com/wod/prometheus-config-reloader
   tag: v0.20.0
 
 ## Configmap-reload image to use for reloading configmaps
 ##
 configmapReload:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/configmap-reload
+  repository: registry.cn-qingdao.aliyuncs.com/wod/configmap-reload
   tag: v0.0.1
 
 ## Prometheus-operator image
 ##
 image:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus-operator
+  repository: registry.cn-qingdao.aliyuncs.com/wod/prometheus-operator
   tag: v0.20.0
   pullPolicy: IfNotPresent
 

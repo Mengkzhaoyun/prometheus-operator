@@ -84,11 +84,11 @@ service:
 ## Grafana Docker image
 ##
 image:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana
+  repository: registry.cn-qingdao.aliyuncs.com/wod/grafana
   tag: 5.2.1
 
 grafanaWatcher:
-  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana-watcher
+  repository: registry.cn-qingdao.aliyuncs.com/wod/grafana-watcher
   tag: v0.0.8
 
   ## Resource limits & requests
@@ -140,7 +140,7 @@ ingress:
   # hosts:
   #   - grafana.domain.com
   hosts: 
-    - grafana.wodcloud.com
+    - grafana.ct.csii.com.cn
 
   ## TLS configuration for Alertmanager Ingress
   ## Secret must be manually created in the namespace

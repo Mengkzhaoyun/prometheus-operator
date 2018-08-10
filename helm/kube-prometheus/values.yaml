@@ -56,7 +56,7 @@ alertmanager:
   ## Alertmanager container image
   ##
   image:
-    repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/alertmanager
+    repository: registry.cn-qingdao.aliyuncs.com/wod/alertmanager
     tag: v0.15.1
 
   ingress:
@@ -191,7 +191,7 @@ prometheus:
   ## Prometheus container image
   ##
   image:
-    repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus
+    repository: registry.cn-qingdao.aliyuncs.com/wod/prometheus
     tag: v2.2.1
 
   ingress:
@@ -436,8 +436,8 @@ prometheus:
 # prometheusRules: {}
 
 # Select Deployed DNS Solution
-deployCoreDNS: false
-deployKubeDNS: true
+deployCoreDNS: true
+deployKubeDNS: false
 deployKubeEtcd: true
 
 ##Custom Labels to be added to Prometheus Rules CRD
