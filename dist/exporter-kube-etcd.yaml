@@ -36,9 +36,10 @@ metadata:
   namespace: kube-system
 subsets:
   - addresses:
-      - ip: 172.31.14.41
-      - ip: 172.31.14.42
-      - ip: 172.31.14.43
+      - ip: 172.16.45.141
+      - ip: 172.16.45.142
+      - ip: 172.16.45.143
+      - ip: 172.16.60.16
     ports:
       - name: http-metrics
         port: 2379

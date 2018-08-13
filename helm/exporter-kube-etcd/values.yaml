@@ -5,7 +5,7 @@ endpoints:
 - 172.16.45.141
 - 172.16.45.142
 - 172.16.45.143
-- 172.16.45.16
+- 172.16.60.16
 # Are we talking http or https?
 scheme: http
 # service selector label key to target kube etcd pods
