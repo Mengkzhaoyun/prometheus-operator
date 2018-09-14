@@ -64,7 +64,7 @@ additionalRulesLabels: {}
 ##
 image:
   repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/alertmanager
-  tag: v0.15.1
+  tag: v0.15.2
 
 ## Labels to be added to the Alertmanager
 ##
@@ -191,14 +191,14 @@ global:
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/storage.md
 ##
 storageSpec: {}
-#  volumeClaimTemplate:
-#    spec:
-#      storageClassName: gluster
-#      accessModes: ["ReadWriteOnce"]
-#      resources:
-#        requests:
-#          storage: 50Gi
-#    selector: {}
+ volumeClaimTemplate:
+   spec:
+     storageClassName: fast
+     accessModes: ["ReadWriteOnce"]
+     resources:
+       requests:
+         storage: 10Gi
+   selector: {}
 
 # default rules are in templates/alertmanager.rules.yaml
 # prometheusRules: {}

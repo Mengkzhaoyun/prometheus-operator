@@ -19,6 +19,17 @@ spec:
         app: {{ template "grafana.fullname" . }}
         release: "{{ .Release.Name }}"
     spec:
+      initContainers:
+      - name: init-data
+        image: {{ .Values.busybox.repository }}:{{ .Values.busybox.tag }}
+        command:
+        - "chown"
+        - "-R"
+        - "472:472"
+        - "/var/lib/grafana"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: "/var/lib/grafana"    
       containers:
       - name: grafana
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
