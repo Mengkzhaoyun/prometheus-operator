@@ -43,7 +43,7 @@ additionalRulesLabels: {}
 ##
 image:
   repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus
-  tag: v2.2.1
+  tag: v2.4.0
 
 ## Labels to be added to the Prometheus
 ##
@@ -334,15 +334,15 @@ serviceMonitors: []
 ## Prometheus StorageSpec for persistent data
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/storage.md
 ##
-storageSpec: {}
-#  volumeClaimTemplate:
-#    spec:
-#      storageClassName: gluster
-#      accessModes: ["ReadWriteOnce"]
-#      resources:
-#        requests:
-#          storage: 50Gi
-#    selector: {}
+storageSpec:
+ volumeClaimTemplate:
+   spec:
+     storageClassName: fast
+     accessModes: ["ReadWriteOnce"]
+     resources:
+       requests:
+         storage: 10Gi
+   selector: {}
 
 # default rules are in templates/prometheus.rules.yaml
 # prometheusRules: {}

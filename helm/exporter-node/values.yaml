@@ -3,7 +3,7 @@
 replicaCount: 1
 image:
   repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/node-exporter
-  tag: v0.15.2
+  tag: v0.16.0
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP

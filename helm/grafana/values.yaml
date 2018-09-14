@@ -85,7 +85,11 @@ service:
 ##
 image:
   repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana
-  tag: 5.2.1
+  tag: 5.2.4
+
+busybox:
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/busybox
+  tag: 1.29
 
 grafanaWatcher:
   repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana-watcher
@@ -101,13 +105,13 @@ grafanaWatcher:
     #  memory: "32Mi"
     #  cpu: "100m"
 
-storageSpec: {}
-#   class: default
-#   accessMode:
-#   resources:
-#     requests:
-#       storage: 2Gi
-#   selector: {}
+storageSpec:
+  class: fast
+  accessMode:
+  resources:
+    requests:
+      storage: 2Gi
+  selector: {}
 
 ## Resource limits & requests
 ## Ref: https://kubernetes.io/docs/user-guide/compute-resources/
