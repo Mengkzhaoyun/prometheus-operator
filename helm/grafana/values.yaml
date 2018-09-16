@@ -107,7 +107,7 @@ grafanaWatcher:
 
 storageSpec:
   class: fast
-  accessMode:
+  accessMode: ReadWriteOnce
   resources:
     requests:
       storage: 2Gi

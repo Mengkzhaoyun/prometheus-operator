@@ -36,4 +36,10 @@ helm/exporter-kube-scheduler helm/exporter-kubelets helm/exporter-node helm/expo
 helm/exporter-kube-etcd helm/exporter-kube-state helm/exporter-coredns helm/exporter-kubernetes
 
 helm install helm/kube-prometheus --name kube-prometheus --namespace monitoring
+
+cd /etc/kubernetes/helm/prometheus-operator
+
+helm upgrade prometheus-operator helm/prometheus-operator
+
+helm upgrade kube-prometheus helm/kube-prometheus
 ```

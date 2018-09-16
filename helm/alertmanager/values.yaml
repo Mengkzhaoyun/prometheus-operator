@@ -190,7 +190,7 @@ global:
 ## Alertmanager StorageSpec for persistent data
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/storage.md
 ##
-storageSpec: {}
+storageSpec:
  volumeClaimTemplate:
    spec:
      storageClassName: fast
