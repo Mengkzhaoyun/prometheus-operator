@@ -77,7 +77,7 @@ prometheusLabelValue: ""
 ingress:
   ## If true, Alertmanager Ingress will be created
   ##
-  enabled: false
+  enabled: true
 
   ## Annotations for Alertmanager Ingress
   ##
@@ -94,7 +94,8 @@ ingress:
   ##
   # hosts:
   #   - alertmanager.domain.com
-  hosts: []
+  hosts:
+  - alertmanager.wodcloud.com
 
   ## TLS configuration for Alertmanager Ingress
   ## Secret must be manually created in the namespace

@@ -52,7 +52,7 @@ labels: {}
 ingress:
   ## If true, Prometheus Ingress will be created
   ##
-  enabled: false
+  enabled: true
 
   ## Annotations for Prometheus Ingress
   ##
@@ -69,7 +69,8 @@ ingress:
   ##
   # hosts:
   #   - prometheus.domain.com
-  hosts: []
+  hosts: 
+  - prometheus.wodcloud.com
 
   ## TLS configuration for Prometheus Ingress
   ## Secret must be manually created in the namespace

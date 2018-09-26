@@ -436,8 +436,8 @@ prometheus:
 # prometheusRules: {}
 
 # Select Deployed DNS Solution
-deployCoreDNS: false
-deployKubeDNS: true
+deployCoreDNS: true
+deployKubeDNS: false
 deployKubeEtcd: true
 
 ##Custom Labels to be added to Prometheus Rules CRD
