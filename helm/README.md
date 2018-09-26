@@ -43,7 +43,5 @@ helm upgrade prometheus-operator helm/prometheus-operator
 
 helm upgrade kube-prometheus helm/kube-prometheus
 ```
-
-```
 helm template ./helm/prometheus-operator --name prometheus-operator --namespace monitoring > ./dist/prometheus-operator.yaml
 ```
