@@ -42,7 +42,7 @@ additionalRulesLabels: {}
 ## Prometheus container image
 ##
 image:
-  repository: quay.io/prometheus/prometheus
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus
   tag: v2.2.1
 
 ## Labels to be added to the Prometheus

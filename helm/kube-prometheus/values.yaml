@@ -56,7 +56,7 @@ alertmanager:
   ## Alertmanager container image
   ##
   image:
-    repository: quay.io/prometheus/alertmanager
+    repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/alertmanager
     tag: v0.15.1
 
   ingress:
@@ -191,7 +191,7 @@ prometheus:
   ## Prometheus container image
   ##
   image:
-    repository: quay.io/prometheus/prometheus
+    repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/prometheus
     tag: v2.2.1
 
   ingress:

@@ -63,8 +63,8 @@ additionalRulesLabels: {}
 ## Alertmanager container image
 ##
 image:
-  repository: hub.c.163.com/mengkzhaoyun/k8s
-  tag: alertmanager-v0.15.1
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/alertmanager
+  tag: v0.15.1
 
 ## Labels to be added to the Alertmanager
 ##

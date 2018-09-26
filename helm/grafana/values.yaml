@@ -42,7 +42,7 @@ extraVars:
 mountGrafanaConfig: false
 
 adminUser: "admin"
-adminPassword: "admin"
+adminPassword: "58772015"
 
 service:
 
@@ -84,11 +84,11 @@ service:
 ## Grafana Docker image
 ##
 image:
-  repository: grafana/grafana
-  tag: 5.0.0
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana
+  tag: 5.2.1
 
 grafanaWatcher:
-  repository: quay.io/coreos/grafana-watcher
+  repository: registry-vpc.cn-qingdao.aliyuncs.com/wod/grafana-watcher
   tag: v0.0.8
 
   ## Resource limits & requests
@@ -122,7 +122,7 @@ resources: {}
 ingress:
   ## If true, Grafana Ingress will be created
   ##
-  enabled: false
+  enabled: true
 
   ## Annotations for Alertmanager Ingress
   ##
@@ -139,7 +139,8 @@ ingress:
   ##
   # hosts:
   #   - grafana.domain.com
-  hosts: []
+  hosts: 
+    - grafana.wodcloud.com
 
   ## TLS configuration for Alertmanager Ingress
   ## Secret must be manually created in the namespace
