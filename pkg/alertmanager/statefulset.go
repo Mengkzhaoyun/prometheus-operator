@@ -28,12 +28,13 @@ import (
 
 	"github.com/blang/semver"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/pkg/errors"
 )
 
 const (
 	governingServiceName   = "alertmanager-operated"
-	defaultVersion         = "v0.15.1"
+	defaultVersion         = "v0.15.2"
 	defaultRetention       = "120h"
 	secretsDir             = "/etc/alertmanager/secrets/"
 	alertmanagerConfDir    = "/etc/alertmanager/config"
@@ -170,11 +171,22 @@ func makeStatefulSetService(p *monitoringv1.Alertmanager, config Config) *v1.Ser
 }
 
 func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.StatefulSetSpec, error) {
-	tag := a.Spec.Version
+	// Before editing 'a' create deep copy, to prevent side effects. For more
+	// details see https://github.com/coreos/prometheus-operator/issues/1659
+	a = a.DeepCopy()
+
+	// Version is used by default.
+	// If the tag is specified, we use the tag to identify the container image.
+	// If the sha is specified, we use the sha to identify the container image,
+	// as it has even stronger immutable guarantees to identify the image.
+	image := fmt.Sprintf("%s:%s", a.Spec.BaseImage, a.Spec.Version)
 	if a.Spec.Tag != "" {
-		tag = a.Spec.Tag
+		image = fmt.Sprintf("%s:%s", a.Spec.BaseImage, a.Spec.Tag)
 	}
-	image := fmt.Sprintf("%s:%s", a.Spec.BaseImage, tag)
+	if a.Spec.SHA != "" {
+		image = fmt.Sprintf("%s@sha256:%s", a.Spec.BaseImage, a.Spec.SHA)
+	}
+
 	versionStr := strings.TrimLeft(a.Spec.Version, "v")
 
 	version, err := semver.Parse(versionStr)
@@ -184,7 +196,7 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.S
 
 	amArgs := []string{
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),
-		fmt.Sprintf("--cluster.listen-address=$(POD_IP):%d", 6783),
+		fmt.Sprintf("--cluster.listen-address=[$(POD_IP)]:%d", 6783),
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
 		fmt.Sprintf("--data.retention=%s", a.Spec.Retention),
 	}
@@ -259,6 +271,10 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.S
 
 	for i := int32(0); i < *a.Spec.Replicas; i++ {
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s.%s.svc:6783", prefixedName(a.Name), i, governingServiceName, a.Namespace))
+	}
+
+	for _, peer := range a.Spec.AdditionalPeers {
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s", peer))
 	}
 
 	ports := []v1.ContainerPort{
@@ -353,7 +369,7 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.S
 	}
 	for _, s := range a.Spec.Secrets {
 		volumes = append(volumes, v1.Volume{
-			Name: "secret-" + s,
+			Name: k8sutil.SanitizeVolumeName("secret-" + s),
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: s,
@@ -361,7 +377,7 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.S
 			},
 		})
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
-			Name:      "secret-" + s,
+			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: secretsDir + s,
 		})
@@ -385,6 +401,7 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*appsv1.S
 			},
 			Spec: v1.PodSpec{
 				NodeSelector:                  a.Spec.NodeSelector,
+				PriorityClassName:             a.Spec.PriorityClassName,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
 				Containers: append([]v1.Container{
 					{

@@ -5,7 +5,7 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
     namespace: 'default',
 
     versions+:: {
-      prometheusOperator: 'v0.22.2',
+      prometheusOperator: 'v0.23.2',
       configmapReloader: 'v0.0.1',
     },
 
@@ -98,7 +98,7 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
                             policyRule.withResources([
                               'namespaces',
                             ]) +
-                            policyRule.withVerbs(['list', 'watch']);
+                            policyRule.withVerbs(['get', 'list', 'watch']);
 
       local rules = [apiExtensionsRule, monitoringRule, appsRule, coreRule, podRule, routingRule, nodeRule, namespaceRule];
 
@@ -119,9 +119,9 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
         container.withPorts(containerPort.newNamed('http', targetPort)) +
         container.withArgs([
           '--kubelet-service=kube-system/kubelet',
-          # Prometheus Operator is run with a read-only root file system. By
-          # default glog saves logfiles to /tmp. Make it log to stderr instead.
-          '-logtostderr=true',
+          // Prometheus Operator is run with a read-only root file system. By
+          // default glog saves logfiles to /tmp. Make it log to stderr instead.
+          '--logtostderr=true',
           '--config-reloader-image=' + $._config.imageRepos.configmapReloader + ':' + $._config.versions.configmapReloader,
           '--prometheus-config-reloader=' + $._config.imageRepos.prometheusConfigReloader + ':' + $._config.versions.prometheusOperator,
         ]) +

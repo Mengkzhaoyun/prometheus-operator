@@ -92,6 +92,7 @@ rules:
   resources:
   - namespaces
   verbs:
+  - get
   - list
   - watch
 ---
@@ -115,10 +116,10 @@ spec:
       containers:
       - args:
         - --kubelet-service=kube-system/kubelet
-        - -logtostderr=true
+        - --logtostderr=true
         - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
-        - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.22.2
-        image: quay.io/coreos/prometheus-operator:v0.22.2
+        - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.23.2
+        image: quay.io/coreos/prometheus-operator:v0.23.2
         name: prometheus-operator
         ports:
         - containerPort: 8080

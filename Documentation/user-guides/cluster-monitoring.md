@@ -59,9 +59,10 @@ spec:
       containers:
       - args:
         - --kubelet-service=kube-system/kubelet
+        - --logtostderr=true
         - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
-        - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.22.2
-        image: quay.io/coreos/prometheus-operator:v0.22.2
+        - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.23.2
+        image: quay.io/coreos/prometheus-operator:v0.23.2
         name: prometheus-operator
         ports:
         - containerPort: 8080
@@ -69,10 +70,13 @@ spec:
         resources:
           limits:
             cpu: 200m
-            memory: 100Mi
+            memory: 200Mi
           requests:
             cpu: 100m
-            memory: 50Mi
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
       nodeSelector:
         beta.kubernetes.io/os: linux
       securityContext:
@@ -162,7 +166,9 @@ spec:
         - --web.listen-address=127.0.0.1:9101
         - --path.procfs=/host/proc
         - --path.sysfs=/host/sys
-        image: quay.io/prometheus/node-exporter:v0.15.2
+        - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+)($|/)
+        - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$
+        image: quay.io/prometheus/node-exporter:v0.16.0
         name: node-exporter
         resources:
           limits:
@@ -178,6 +184,10 @@ spec:
         - mountPath: /host/sys
           name: sys
           readOnly: false
+        - mountPath: /host/root
+          mountPropagation: HostToContainer
+          name: root
+          readOnly: true
       - args:
         - --secure-listen-address=:9100
         - --upstream=http://127.0.0.1:9101/
@@ -212,6 +222,9 @@ spec:
       - hostPath:
           path: /sys
         name: sys
+      - hostPath:
+          path: /
+        name: root
 ```
 
 The respective `ServiceAccount` manifest:
@@ -407,11 +420,9 @@ spec:
       prometheus: k8s
       role: alert-rules
   serviceAccountName: prometheus-k8s
-  serviceMonitorSelector:
-    matchExpressions:
-    - key: k8s-app
-      operator: Exists
-  version: v2.3.1
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  version: v2.3.2
 ```
 
 > Make sure that the `ServiceAccount` called `prometheus-k8s` exists and if using RBAC, is bound to the correct role. Read more on [RBAC when using the Prometheus Operator](../rbac.md).
@@ -596,10 +607,10 @@ spec:
     beta.kubernetes.io/os: linux
   replicas: 3
   serviceAccountName: alertmanager-main
-  version: v0.15.0
+  version: v0.15.2
 ```
 
-Read more in the [alerting guide](alerting.md) on how to configure the Alertmanager as it will not spin up unless it has a valid configuration mounted through a `Secret`. Note that the `Secret` has to be in the same namespace as the `Alertmanager` resource as well as have the name `alertmanager-<name-of-alertmanager-object` and the key of the configuration is `alertmanager.yaml`.
+Read more in the [alerting guide](alerting.md) on how to configure the Alertmanager as it will not spin up unless it has a valid configuration mounted through a `Secret`. Note that the `Secret` has to be in the same namespace as the `Alertmanager` resource as well as have the name `alertmanager-<name-of-alertmanager-object>` and the key of the configuration is `alertmanager.yaml`.
 
 ## Outlook
 

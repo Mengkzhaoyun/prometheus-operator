@@ -290,7 +290,7 @@ func TestMakeStatefulSetSpecMeshClusterFlags(t *testing.T) {
 		wrongHAPrefix string
 	}{
 		{"v0.14.0", "mesh", "cluster"},
-		{"v0.15.0", "cluster", "mesh"},
+		{"v0.15.2", "cluster", "mesh"},
 	}
 
 	for _, test := range tests {
@@ -326,7 +326,7 @@ func TestMakeStatefulSetSpecPeerFlagPort(t *testing.T) {
 		portNeeded bool
 	}{
 		{"v0.14.0", false},
-		{"v0.15.0", true},
+		{"v0.15.2", true},
 	}
 
 	for _, test := range tests {
@@ -349,6 +349,31 @@ func TestMakeStatefulSetSpecPeerFlagPort(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestMakeStatefulSetSpecAdditionalPeers(t *testing.T) {
+	a := monitoringv1.Alertmanager{}
+	a.Spec.Version = "v0.15.2"
+	replicas := int32(1)
+	a.Spec.Replicas = &replicas
+	a.Spec.AdditionalPeers = []string{"example.com"}
+
+	statefulSet, err := makeStatefulSetSpec(&a, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	peerFound := false
+	amArgs := statefulSet.Template.Spec.Containers[0].Args
+	for _, arg := range amArgs {
+		if strings.Contains(arg, "example.com") {
+			peerFound = true
+		}
+	}
+
+	if !peerFound {
+		t.Fatal("Additional peers were not found.")
 	}
 }
 
@@ -395,21 +420,41 @@ func TestAdditionalSecretsMounted(t *testing.T) {
 	}
 }
 
-func TestTagAndVersion(t *testing.T) {
-	sset, err := makeStatefulSet(&monitoringv1.Alertmanager{
-		Spec: monitoringv1.AlertmanagerSpec{
-			Tag:     "my-unrelated-tag",
-			Version: "v0.15.0",
-		},
-	}, nil, defaultTestConfig)
-	if err != nil {
-		t.Fatalf("Unexpected error while making StatefulSet: %v", err)
-	}
+func TestSHAAndTagAndVersion(t *testing.T) {
+	{
+		sset, err := makeStatefulSet(&monitoringv1.Alertmanager{
+			Spec: monitoringv1.AlertmanagerSpec{
+				Tag:     "my-unrelated-tag",
+				Version: "v0.15.2",
+			},
+		}, nil, defaultTestConfig)
+		if err != nil {
+			t.Fatalf("Unexpected error while making StatefulSet: %v", err)
+		}
 
-	image := sset.Spec.Template.Spec.Containers[0].Image
-	expected := "quay.io/prometheus/alertmanager:my-unrelated-tag"
-	if image != expected {
-		t.Fatalf("Unexpected container image.\n\nExpected: %s\n\nGot: %s", expected, image)
+		image := sset.Spec.Template.Spec.Containers[0].Image
+		expected := "quay.io/prometheus/alertmanager:my-unrelated-tag"
+		if image != expected {
+			t.Fatalf("Unexpected container image.\n\nExpected: %s\n\nGot: %s", expected, image)
+		}
+	}
+	{
+		sset, err := makeStatefulSet(&monitoringv1.Alertmanager{
+			Spec: monitoringv1.AlertmanagerSpec{
+				SHA:     "7384a79f4b4991bf8269e7452390249b7c70bcdd10509c8c1c6c6e30e32fb324",
+				Tag:     "my-unrelated-tag",
+				Version: "v0.15.2",
+			},
+		}, nil, defaultTestConfig)
+		if err != nil {
+			t.Fatalf("Unexpected error while making StatefulSet: %v", err)
+		}
+
+		image := sset.Spec.Template.Spec.Containers[0].Image
+		expected := "quay.io/prometheus/alertmanager@sha256:7384a79f4b4991bf8269e7452390249b7c70bcdd10509c8c1c6c6e30e32fb324"
+		if image != expected {
+			t.Fatalf("Unexpected container image.\n\nExpected: %s\n\nGot: %s", expected, image)
+		}
 	}
 }
 

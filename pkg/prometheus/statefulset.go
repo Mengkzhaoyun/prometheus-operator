@@ -28,6 +28,7 @@ import (
 
 	"github.com/blang/semver"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/pkg/errors"
 )
 
@@ -84,6 +85,12 @@ func makeStatefulSet(
 	ruleConfigMapNames []string,
 	inputHash string,
 ) (*appsv1.StatefulSet, error) {
+	// p is passed in by value, not by reference. But p contains references like
+	// to annotation map, that do not get copied on function invocation. Ensure to
+	// prevent side effects before editing p by creating a deep copy. For more
+	// details see https://github.com/coreos/prometheus-operator/issues/1659.
+	p = *p.DeepCopy()
+
 	// TODO(fabxc): is this the right point to inject defaults?
 	// Ideally we would do it before storing but that's currently not possible.
 	// Potentially an update handler on first insertion.
@@ -442,7 +449,7 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 
 	for _, s := range p.Spec.Secrets {
 		volumes = append(volumes, v1.Volume{
-			Name: "secret-" + s,
+			Name: k8sutil.SanitizeVolumeName("secret-" + s),
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: s,
@@ -450,7 +457,7 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 			},
 		})
 		promVolumeMounts = append(promVolumeMounts, v1.VolumeMount{
-			Name:      "secret-" + s,
+			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: secretsDir + s,
 		})
@@ -577,15 +584,26 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 			thanosBaseImage = *p.Spec.Thanos.BaseImage
 		}
 
-		thanosTag := *p.Spec.Thanos.Version
+		// Version is used by default.
+		// If the tag is specified, we use the tag to identify the container image.
+		// If the sha is specified, we use the sha to identify the container image,
+		// as it has even stronger immutable guarantees to identify the image.
+		thanosImage := fmt.Sprintf("%s:%s", thanosBaseImage, *p.Spec.Thanos.Version)
 		if p.Spec.Thanos.Tag != nil {
-			thanosTag = *p.Spec.Thanos.Tag
+			thanosImage = fmt.Sprintf("%s:%s", thanosBaseImage, *p.Spec.Thanos.Tag)
+		}
+		if p.Spec.Thanos.SHA != nil {
+			thanosImage = fmt.Sprintf("%s@sha256:%s", thanosBaseImage, *p.Spec.Thanos.SHA)
 		}
 
-		thanosArgs := []string{"sidecar"}
+		thanosArgs := []string{
+			"sidecar",
+			fmt.Sprintf("--prometheus.url=http://%s:9090", c.LocalHost),
+			fmt.Sprintf("--tsdb.path=%s", storageDir),
+			fmt.Sprintf("--cluster.address=[$(POD_IP)]:%d", 10900),
+			fmt.Sprintf("--grpc-address=[$(POD_IP)]:%d", 10901),
+		}
 
-		thanosArgs = append(thanosArgs, fmt.Sprintf("--prometheus.url=http://%s:9090", c.LocalHost))
-		thanosArgs = append(thanosArgs, fmt.Sprintf("--tsdb.path=%s", storageDir))
 		if p.Spec.Thanos.Peers != nil {
 			thanosArgs = append(thanosArgs, fmt.Sprintf("--cluster.peers=%s", *p.Spec.Thanos.Peers))
 		}
@@ -601,7 +619,17 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 			},
 		}
 
-		envVars := []v1.EnvVar{}
+		envVars := []v1.EnvVar{
+			{
+				// Necessary for '--cluster.address', '--grpc-address' flags
+				Name: "POD_IP",
+				ValueFrom: &v1.EnvVarSource{
+					FieldRef: &v1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		}
 		if p.Spec.Thanos.GCS != nil {
 			if p.Spec.Thanos.GCS.Bucket != nil {
 				thanosArgs = append(thanosArgs, fmt.Sprintf("--gcs.bucket=%s", *p.Spec.Thanos.GCS.Bucket))
@@ -669,7 +697,7 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 
 		c := v1.Container{
 			Name:  "thanos-sidecar",
-			Image: thanosBaseImage + ":" + thanosTag,
+			Image: thanosImage,
 			Args:  thanosArgs,
 			Ports: []v1.ContainerPort{
 				{
@@ -694,9 +722,16 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 		promArgs = append(promArgs, "--storage.tsdb.min-block-duration=2h", "--storage.tsdb.max-block-duration=2h")
 	}
 
-	prometheusTag := p.Spec.Version
+	// Version is used by default.
+	// If the tag is specified, we use the tag to identify the container image.
+	// If the sha is specified, we use the sha to identify the container image,
+	// as it has even stronger immutable guarantees to identify the image.
+	prometheusImage := fmt.Sprintf("%s:%s", p.Spec.BaseImage, p.Spec.Version)
 	if p.Spec.Tag != "" {
-		prometheusTag = p.Spec.Tag
+		prometheusImage = fmt.Sprintf("%s:%s", p.Spec.BaseImage, p.Spec.Tag)
+	}
+	if p.Spec.SHA != "" {
+		prometheusImage = fmt.Sprintf("%s@sha256:%s", p.Spec.BaseImage, p.Spec.SHA)
 	}
 
 	return &appsv1.StatefulSetSpec{
@@ -718,7 +753,7 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 				Containers: append([]v1.Container{
 					{
 						Name:           "prometheus",
-						Image:          fmt.Sprintf("%s:%s", p.Spec.BaseImage, prometheusTag),
+						Image:          prometheusImage,
 						Ports:          ports,
 						Args:           promArgs,
 						VolumeMounts:   promVolumeMounts,
@@ -750,10 +785,11 @@ func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMapName
 				SecurityContext:               securityContext,
 				ServiceAccountName:            p.Spec.ServiceAccountName,
 				NodeSelector:                  p.Spec.NodeSelector,
+				PriorityClassName:             p.Spec.PriorityClassName,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
-				Volumes:     volumes,
-				Tolerations: p.Spec.Tolerations,
-				Affinity:    p.Spec.Affinity,
+				Volumes:                       volumes,
+				Tolerations:                   p.Spec.Tolerations,
+				Affinity:                      p.Spec.Affinity,
 			},
 		},
 	}, nil

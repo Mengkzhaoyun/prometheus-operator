@@ -11,21 +11,26 @@ spec:
   - name: k8s.rules
     rules:
     - expr: |
-        sum(rate(container_cpu_usage_seconds_total{job="kubelet", image!=""}[5m])) by (namespace)
+        sum(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container_name!=""}[5m])) by (namespace)
       record: namespace:container_cpu_usage_seconds_total:sum_rate
     - expr: |
-        sum(container_memory_usage_bytes{job="kubelet", image!=""}) by (namespace)
+        sum by (namespace, pod_name, container_name) (
+          rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container_name!=""}[5m])
+        )
+      record: namespace_pod_name_container_name:container_cpu_usage_seconds_total:sum_rate
+    - expr: |
+        sum(container_memory_usage_bytes{job="kubelet", image!="", container_name!=""}) by (namespace)
       record: namespace:container_memory_usage_bytes:sum
     - expr: |
         sum by (namespace, label_name) (
-           sum(rate(container_cpu_usage_seconds_total{job="kubelet", image!=""}[5m])) by (namespace, pod_name)
+           sum(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container_name!=""}[5m])) by (namespace, pod_name)
          * on (namespace, pod_name) group_left(label_name)
            label_replace(kube_pod_labels{job="kube-state-metrics"}, "pod_name", "$1", "pod", "(.*)")
         )
       record: namespace_name:container_cpu_usage_seconds_total:sum_rate
     - expr: |
         sum by (namespace, label_name) (
-          sum(container_memory_usage_bytes{job="kubelet",image!=""}) by (pod_name, namespace)
+          sum(container_memory_usage_bytes{job="kubelet",image!="", container_name!=""}) by (pod_name, namespace)
         * on (namespace, pod_name) group_left(label_name)
           label_replace(kube_pod_labels{job="kube-state-metrics"}, "pod_name", "$1", "pod", "(.*)")
         )
@@ -152,6 +157,12 @@ spec:
         sum(node_memory_MemTotal{job="node-exporter"})
       record: ':node_memory_utilisation:'
     - expr: |
+        sum(node_memory_MemFree{job="node-exporter"} + node_memory_Cached{job="node-exporter"} + node_memory_Buffers{job="node-exporter"})
+      record: :node_memory_MemFreeCachedBuffers:sum
+    - expr: |
+        sum(node_memory_MemTotal{job="node-exporter"})
+      record: :node_memory_MemTotal:sum
+    - expr: |
         sum by (node) (
           (node_memory_MemFree{job="node-exporter"} + node_memory_Cached{job="node-exporter"} + node_memory_Buffers{job="node-exporter"})
           * on (namespace, pod) group_left(node)
@@ -222,6 +233,14 @@ spec:
         )
       record: node:node_disk_saturation:avg_irate
     - expr: |
+        max by (namespace, pod, device) ((node_filesystem_size{fstype=~"ext[234]|btrfs|xfs|zfs"}
+        - node_filesystem_avail{fstype=~"ext[234]|btrfs|xfs|zfs"})
+        / node_filesystem_size{fstype=~"ext[234]|btrfs|xfs|zfs"})
+      record: 'node:node_filesystem_usage:'
+    - expr: |
+        max by (namespace, pod, device) (node_filesystem_avail{fstype=~"ext[234]|btrfs|xfs|zfs"} / node_filesystem_size{fstype=~"ext[234]|btrfs|xfs|zfs"})
+      record: 'node:node_filesystem_avail:'
+    - expr: |
         sum(irate(node_network_receive_bytes{job="node-exporter",device="eth0"}[1m])) +
         sum(irate(node_network_transmit_bytes{job="node-exporter",device="eth0"}[1m]))
       record: :node_net_utilisation:sum_irate
@@ -263,6 +282,201 @@ spec:
       record: cluster:node_cpu:sum_rate5m
     - expr: cluster:node_cpu:rate5m / count(sum(node_cpu) BY (instance, cpu))
       record: cluster:node_cpu:ratio
+  - name: node_exporter-16-bcache
+    rules:
+    - expr: node_bcache_cache_read_races
+      record: node_bcache_cache_read_races_total
+  - name: node_exporter-16-buddyinfo
+    rules:
+    - expr: node_buddyinfo_blocks
+      record: node_buddyinfo_count
+  - name: node_exporter-16-stat
+    rules:
+    - expr: node_boot_time_seconds
+      record: node_boot_time
+    - expr: node_context_switches_total
+      record: node_context_switches
+    - expr: node_forks_total
+      record: node_forks
+    - expr: node_intr_total
+      record: node_intr
+  - name: node_exporter-16-cpu
+    rules:
+    - expr: label_replace(node_cpu_seconds_total, "cpu", "$1", "cpu", "cpu(.+)")
+      record: node_cpu
+  - name: node_exporter-16-diskstats
+    rules:
+    - expr: node_disk_read_bytes_total
+      record: node_disk_bytes_read
+    - expr: node_disk_written_bytes_total
+      record: node_disk_bytes_written
+    - expr: node_disk_io_time_seconds_total * 1000
+      record: node_disk_io_time_ms
+    - expr: node_disk_io_time_weighted_seconds_total
+      record: node_disk_io_time_weighted
+    - expr: node_disk_reads_completed_total
+      record: node_disk_reads_completed
+    - expr: node_disk_reads_merged_total
+      record: node_disk_reads_merged
+    - expr: node_disk_read_time_seconds_total * 1000
+      record: node_disk_read_time_ms
+    - expr: node_disk_writes_completed_total
+      record: node_disk_writes_completed
+    - expr: node_disk_writes_merged_total
+      record: node_disk_writes_merged
+    - expr: node_disk_write_time_seconds_total * 1000
+      record: node_disk_write_time_ms
+  - name: node_exporter-16-filesystem
+    rules:
+    - expr: node_filesystem_free_bytes
+      record: node_filesystem_free
+    - expr: node_filesystem_avail_bytes
+      record: node_filesystem_avail
+    - expr: node_filesystem_size_bytes
+      record: node_filesystem_size
+  - name: node_exporter-16-infiniband
+    rules:
+    - expr: node_infiniband_port_data_received_bytes_total
+      record: node_infiniband_port_data_received_bytes
+    - expr: node_infiniband_port_data_transmitted_bytes_total
+      record: node_infiniband_port_data_transmitted_bytes
+  - name: node_exporter-16-interrupts
+    rules:
+    - expr: node_interrupts_total
+      record: node_interrupts
+  - name: node_exporter-16-memory
+    rules:
+    - expr: node_memory_Active_bytes
+      record: node_memory_Active
+    - expr: node_memory_Active_anon_bytes
+      record: node_memory_Active_anon
+    - expr: node_memory_Active_file_bytes
+      record: node_memory_Active_file
+    - expr: node_memory_AnonHugePages_bytes
+      record: node_memory_AnonHugePages
+    - expr: node_memory_AnonPages_bytes
+      record: node_memory_AnonPages
+    - expr: node_memory_Bounce_bytes
+      record: node_memory_Bounce
+    - expr: node_memory_Buffers_bytes
+      record: node_memory_Buffers
+    - expr: node_memory_Cached_bytes
+      record: node_memory_Cached
+    - expr: node_memory_CommitLimit_bytes
+      record: node_memory_CommitLimit
+    - expr: node_memory_Committed_AS_bytes
+      record: node_memory_Committed_AS
+    - expr: node_memory_DirectMap2M_bytes
+      record: node_memory_DirectMap2M
+    - expr: node_memory_DirectMap4k_bytes
+      record: node_memory_DirectMap4k
+    - expr: node_memory_Dirty_bytes
+      record: node_memory_Dirty
+    - expr: node_memory_HardwareCorrupted_bytes
+      record: node_memory_HardwareCorrupted
+    - expr: node_memory_Hugepagesize_bytes
+      record: node_memory_Hugepagesize
+    - expr: node_memory_Inactive_bytes
+      record: node_memory_Inactive
+    - expr: node_memory_Inactive_anon_bytes
+      record: node_memory_Inactive_anon
+    - expr: node_memory_Inactive_file_bytes
+      record: node_memory_Inactive_file
+    - expr: node_memory_KernelStack_bytes
+      record: node_memory_KernelStack
+    - expr: node_memory_Mapped_bytes
+      record: node_memory_Mapped
+    - expr: node_memory_MemAvailable_bytes
+      record: node_memory_MemAvailable
+    - expr: node_memory_MemFree_bytes
+      record: node_memory_MemFree
+    - expr: node_memory_MemTotal_bytes
+      record: node_memory_MemTotal
+    - expr: node_memory_Mlocked_bytes
+      record: node_memory_Mlocked
+    - expr: node_memory_NFS_Unstable_bytes
+      record: node_memory_NFS_Unstable
+    - expr: node_memory_PageTables_bytes
+      record: node_memory_PageTables
+    - expr: node_memory_Shmem_bytes
+      record: node_memory_Shmem
+    - expr: node_memory_Slab_bytes
+      record: node_memory_Slab
+    - expr: node_memory_SReclaimable_bytes
+      record: node_memory_SReclaimable
+    - expr: node_memory_SUnreclaim_bytes
+      record: node_memory_SUnreclaim
+    - expr: node_memory_SwapCached_bytes
+      record: node_memory_SwapCached
+    - expr: node_memory_SwapFree_bytes
+      record: node_memory_SwapFree
+    - expr: node_memory_SwapTotal_bytes
+      record: node_memory_SwapTotal
+    - expr: node_memory_Unevictable_bytes
+      record: node_memory_Unevictable
+    - expr: node_memory_VmallocChunk_bytes
+      record: node_memory_VmallocChunk
+    - expr: node_memory_VmallocTotal_bytes
+      record: node_memory_VmallocTotal
+    - expr: node_memory_VmallocUsed_bytes
+      record: node_memory_VmallocUsed
+    - expr: node_memory_Writeback_bytes
+      record: node_memory_Writeback
+    - expr: node_memory_WritebackTmp_bytes
+      record: node_memory_WritebackTmp
+  - name: node_exporter-16-network
+    rules:
+    - expr: node_network_receive_bytes_total
+      record: node_network_receive_bytes
+    - expr: node_network_receive_compressed_total
+      record: node_network_receive_compressed
+    - expr: node_network_receive_drop_total
+      record: node_network_receive_drop
+    - expr: node_network_receive_errs_total
+      record: node_network_receive_errs
+    - expr: node_network_receive_fifo_total
+      record: node_network_receive_fifo
+    - expr: node_network_receive_frame_total
+      record: node_network_receive_frame
+    - expr: node_network_receive_multicast_total
+      record: node_network_receive_multicast
+    - expr: node_network_receive_packets_total
+      record: node_network_receive_packets
+    - expr: node_network_transmit_bytes_total
+      record: node_network_transmit_bytes
+    - expr: node_network_transmit_compressed_total
+      record: node_network_transmit_compressed
+    - expr: node_network_transmit_drop_total
+      record: node_network_transmit_drop
+    - expr: node_network_transmit_errs_total
+      record: node_network_transmit_errs
+    - expr: node_network_transmit_fifo_total
+      record: node_network_transmit_fifo
+    - expr: node_network_transmit_frame_total
+      record: node_network_transmit_frame
+    - expr: node_network_transmit_multicast_total
+      record: node_network_transmit_multicast
+    - expr: node_network_transmit_packets_total
+      record: node_network_transmit_packets
+  - name: node_exporter-16-nfs
+    rules:
+    - expr: node_nfs_connections_total
+      record: node_nfs_net_connections
+    - expr: node_nfs_packets_total
+      record: node_nfs_net_reads
+    - expr: label_replace(label_replace(node_nfs_requests_total, "proto", "$1", "version",
+        "(.+)"), "method", "$1", "procedure", "(.+)")
+      record: node_nfs_procedures
+    - expr: node_nfs_rpc_authentication_refreshes_total
+      record: node_nfs_rpc_authentication_refreshes
+    - expr: node_nfs_rpcs_total
+      record: node_nfs_rpc_operations
+    - expr: node_nfs_rpc_retransmissions_total
+      record: node_nfs_rpc_retransmissions
+  - name: node_exporter-16-textfile
+    rules:
+    - expr: node_textfile_mtime_seconds
+      record: node_textfile_mtime
   - name: kubernetes-absent
     rules:
     - alert: AlertmanagerDown
@@ -363,7 +577,7 @@ spec:
         message: '{{ $labels.namespace }}/{{ $labels.pod }} is not ready.'
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodnotready
       expr: |
-        sum by (namespace, pod) (kube_pod_status_phase{job="kube-state-metrics", phase!~"Running|Succeeded"}) > 0
+        sum by (namespace, pod) (kube_pod_status_phase{job="kube-state-metrics", phase=~"Pending|Unknown"}) > 0
       for: 1h
       labels:
         severity: critical
@@ -567,10 +781,10 @@ spec:
       annotations:
         message: Based on recent sampling, the persistent volume claimed by {{ $labels.persistentvolumeclaim
           }} in namespace {{ $labels.namespace }} is expected to fill up within four
-          days.
+          days. Currently {{ $value }} bytes are available.
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefullinfourdays
       expr: |
-        predict_linear(kubelet_volume_stats_available_bytes{job="kubelet"}[1h], 4 * 24 * 3600) < 0
+        kubelet_volume_stats_available_bytes{job="kubelet"} and predict_linear(kubelet_volume_stats_available_bytes{job="kubelet"}[6h], 4 * 24 * 3600) < 0
       for: 5m
       labels:
         severity: critical
@@ -601,10 +815,10 @@ spec:
           }}' is experiencing {{ printf "%0.0f" $value }}% errors.'
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclienterrors
       expr: |
-        sum(rate(rest_client_requests_total{code!~"2.."}[5m])) by (instance, job) * 100
+        (sum(rate(rest_client_requests_total{code!~"2..|404"}[5m])) by (instance, job)
           /
-        sum(rate(rest_client_requests_total[5m])) by (instance, job)
-          > 1
+        sum(rate(rest_client_requests_total[5m])) by (instance, job))
+        * 100 > 1
       for: 15m
       labels:
         severity: warning
@@ -624,7 +838,7 @@ spec:
           the limit of 110.
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubelettoomanypods
       expr: |
-        kubelet_running_pod_count{job="kubelet"} > 100
+        kubelet_running_pod_count{job="kubelet"} > 110 * 0.9
       for: 15m
       labels:
         severity: warning
@@ -634,7 +848,7 @@ spec:
           for {{$labels.verb}} {{$labels.resource}}.
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapilatencyhigh
       expr: |
-        cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.99",subresource!="log",verb!~"^(?:WATCH|WATCHLIST|PROXY|CONNECT)$"} > 1
+        cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.99",subresource!="log",verb!~"^(?:LIST|WATCH|WATCHLIST|PROXY|CONNECT)$"} > 1
       for: 10m
       labels:
         severity: warning
@@ -644,7 +858,7 @@ spec:
           for {{$labels.verb}} {{$labels.resource}}.
         runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapilatencyhigh
       expr: |
-        cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.99",subresource!="log",verb!~"^(?:WATCH|WATCHLIST|PROXY|CONNECT)$"} > 4
+        cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.99",subresource!="log",verb!~"^(?:LIST|WATCH|WATCHLIST|PROXY|CONNECT)$"} > 4
       for: 10m
       labels:
         severity: critical
@@ -700,8 +914,8 @@ spec:
         severity: critical
     - alert: AlertmanagerDownOrMissing
       annotations:
-        description: An unexpected number of Alertmanagers are scraped or Alertmanagers
-          disappeared from discovery.
+        description: An unexpected number of Alertmanagers were scraped or disappeared
+          from discovery.
         summary: Alertmanager down or missing
       expr: |
         label_replace(prometheus_operator_alertmanager_spec_replicas{job="prometheus-operator"}, "job", "alertmanager-$1", "alertmanager", "(.*)") / ON(job) GROUP_RIGHT() sum(up{job="alertmanager-main"}) BY (job) != 1
@@ -722,7 +936,7 @@ spec:
     rules:
     - alert: TargetDown
       annotations:
-        description: '{{ $value }}% of {{ $labels.job }} targets are down.'
+        description: '{{ $value }}% of the {{ $labels.job }} targets are down.'
         summary: Targets are down
       expr: 100 * (count(up == 0) BY (job) / count(up) BY (job)) > 10
       for: 10m
@@ -730,7 +944,7 @@ spec:
         severity: warning
     - alert: DeadMansSwitch
       annotations:
-        description: This is a DeadMansSwitch meant to ensure that the entire Alerting
+        description: This is a DeadMansSwitch meant to ensure that the entire alerting
           pipeline is functional.
         summary: Alerting DeadMansSwitch
       expr: vector(1)
@@ -740,21 +954,19 @@ spec:
     rules:
     - alert: NodeDiskRunningFull
       annotations:
-        description: device {{$labels.device}} on node {{$labels.instance}} is running
-          full within the next 24 hours (mounted at {{$labels.mountpoint}})
-        summary: Node disk is running full within 24 hours
+        message: Device {{ $labels.device }} of node-exporter {{ $labels.namespace
+          }}/{{ $labels.pod }} will be full within the next 24 hours.
       expr: |
-        predict_linear(node_filesystem_free{job="node-exporter",mountpoint!~"^/etc/(?:resolv.conf|hosts|hostname)$"}[6h], 3600 * 24) < 0 and on(instance) up{job="node-exporter"}
+        (node:node_filesystem_usage: > 0.85) and (predict_linear(node:node_filesystem_avail:[6h], 3600 * 24) < 0)
       for: 30m
       labels:
         severity: warning
     - alert: NodeDiskRunningFull
       annotations:
-        description: device {{$labels.device}} on node {{$labels.instance}} is running
-          full within the next 2 hours (mounted at {{$labels.mountpoint}})
-        summary: Node disk is running full within 2 hours
+        message: Device {{ $labels.device }} of node-exporter {{ $labels.namespace
+          }}/{{ $labels.pod }} will be full within the next 2 hours.
       expr: |
-        predict_linear(node_filesystem_free{job="node-exporter",mountpoint!~"^/etc/(?:resolv.conf|hosts|hostname)$"}[30m], 3600 * 2) < 0 and on(instance) up{job="node-exporter"}
+        (node:node_filesystem_usage: > 0.85) and (predict_linear(node:node_filesystem_avail:[30m], 3600 * 2) < 0)
       for: 10m
       labels:
         severity: critical
@@ -849,13 +1061,40 @@ spec:
       for: 10m
       labels:
         severity: warning
-    - alert: PrometheusTargetScapesDuplicate
+    - alert: PrometheusTargetScrapesDuplicate
       annotations:
         description: '{{$labels.namespace}}/{{$labels.pod}} has many samples rejected
           due to duplicate timestamps but different values'
         summary: Prometheus has many samples rejected
       expr: |
         increase(prometheus_target_scrapes_sample_duplicate_timestamp_total{job="prometheus-k8s"}[5m]) > 0
+      for: 10m
+      labels:
+        severity: warning
+  - name: prometheus-operator
+    rules:
+    - alert: PrometheusOperatorAlertmanagerReconcileErrors
+      annotations:
+        message: Errors while reconciling Alertmanager in {{ $labels.namespace }}
+          Namespace.
+      expr: |
+        rate(prometheus_operator_alertmanager_reconcile_errors_total{job="prometheus-operator"}[5m]) > 0.1
+      for: 10m
+      labels:
+        severity: warning
+    - alert: PrometheusOperatorPrometheusReconcileErrors
+      annotations:
+        message: Errors while reconciling Prometheus in {{ $labels.namespace }} Namespace.
+      expr: |
+        rate(prometheus_operator_prometheus_reconcile_errors_total{job="prometheus-operator"}[5m]) > 0.1
+      for: 10m
+      labels:
+        severity: warning
+    - alert: PrometheusOperatorNodeLookupErrors
+      annotations:
+        message: Errors while reconciling Prometheus in {{ $labels.namespace }} Namespace.
+      expr: |
+        rate(prometheus_operator_node_address_lookup_errors_total{job="prometheus-operator"}[5m]) > 0.1
       for: 10m
       labels:
         severity: warning

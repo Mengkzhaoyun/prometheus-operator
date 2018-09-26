@@ -32,7 +32,7 @@ import (
 	testFramework "github.com/coreos/prometheus-operator/test/framework"
 )
 
-func TestAlertmanagerCreateDeleteCluster(t *testing.T) {
+func testAMCreateDeleteCluster(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
@@ -51,7 +51,7 @@ func TestAlertmanagerCreateDeleteCluster(t *testing.T) {
 	}
 }
 
-func TestAlertmanagerScaling(t *testing.T) {
+func testAMScaling(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
@@ -74,7 +74,7 @@ func TestAlertmanagerScaling(t *testing.T) {
 	}
 }
 
-func TestAlertmanagerVersionMigration(t *testing.T) {
+func testAMVersionMigration(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
@@ -90,7 +90,7 @@ func TestAlertmanagerVersionMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	am.Spec.Version = "v0.15.0-rc.1"
+	am.Spec.Version = "v0.15.2"
 	if err := framework.UpdateAlertmanagerAndWaitUntilReady(ns, am); err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestAlertmanagerVersionMigration(t *testing.T) {
 	}
 }
 
-func TestExposingAlertmanagerWithKubernetesAPI(t *testing.T) {
+func testAMExposingWithKubernetesAPI(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
@@ -128,12 +128,12 @@ func TestExposingAlertmanagerWithKubernetesAPI(t *testing.T) {
 	}
 }
 
-func TestMeshInitialization(t *testing.T) {
+func testAMMeshInitialization(t *testing.T) {
 	t.Parallel()
 
 	// Starting with Alertmanager v0.15.0 hashicorp/memberlist is used for HA.
 	// Make sure both memberlist as well as mesh (< 0.15.0) work
-	amVersions := []string{"v0.14.0", "v0.15.0-rc.1"}
+	amVersions := []string{"v0.14.0", "v0.15.2"}
 
 	for _, v := range amVersions {
 		version := v
@@ -170,7 +170,7 @@ func TestMeshInitialization(t *testing.T) {
 	}
 }
 
-func TestAlertmanagerClusterGossipSilences(t *testing.T) {
+func testAMClusterGossipSilences(t *testing.T) {
 	t.Parallel()
 	ctx := framework.NewTestCtx(t)
 	defer ctx.Cleanup(t)
@@ -179,7 +179,6 @@ func TestAlertmanagerClusterGossipSilences(t *testing.T) {
 
 	amClusterSize := 3
 	alertmanager := framework.MakeBasicAlertmanager("test", int32(amClusterSize))
-	alertmanager.Spec.Version = "v0.15.0-rc.1"
 
 	if err := framework.CreateAlertmanagerAndWaitUntilReady(ns, alertmanager); err != nil {
 		t.Fatal(err)
@@ -219,7 +218,7 @@ func TestAlertmanagerClusterGossipSilences(t *testing.T) {
 	}
 }
 
-func TestAlertmanagerReloadConfig(t *testing.T) {
+func testAMReloadConfig(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
@@ -292,7 +291,7 @@ receivers:
 	}
 }
 
-func TestAlertmanagerZeroDowntimeRollingDeployment(t *testing.T) {
+func testAMZeroDowntimeRollingDeployment(t *testing.T) {
 	t.Parallel()
 
 	ctx := framework.NewTestCtx(t)
